@@ -14,10 +14,12 @@ func main() {
 	}
 
 	current, err := lib.GetInstalledVersion()
-	if err != nil && err != lib.GoNotInstalledError {
+	if err != nil && err != lib.ErrGoNotInstalled {
 		fmt.Printf("[!] %v", err)
+		return
 	}
-	if err == lib.GoNotInstalledError {
+
+	if err == lib.ErrGoNotInstalled {
 		fmt.Println("[+] Go not installed")
 		current = &lib.VersionInfo{
 			Path: "",

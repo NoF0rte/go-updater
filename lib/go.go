@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,13 +21,14 @@ import (
 
 const (
 	baseUrl            = "https://go.dev/dl/"
-	defaultInstallPath = "/usr/local"
+	defaultInstallPath = "/usr/local/go"
+	// defaultInstallPath = "/tmp/blah/go"
 )
 
 var (
-	versionRegex        = `[0-9]+\.[0-9]+\.[0-9]+`
-	goVersionFileRegex  = regexp.MustCompile(fmt.Sprintf(`go(%s)\.([a-zA-Z]+)-([a-zA-Z0-9]+).*`, versionRegex))
-	GoNotInstalledError = fmt.Errorf("Go not installed")
+	versionRegex       = `[0-9]+\.[0-9]+\.[0-9]+`
+	goVersionFileRegex = regexp.MustCompile(fmt.Sprintf(`go(%s)\.([a-zA-Z]+)-([a-zA-Z0-9]+).*`, versionRegex))
+	ErrGoNotInstalled  = fmt.Errorf("go not installed")
 )
 
 type VersionInfo struct {
@@ -85,7 +88,7 @@ func GetLatestVersion() *VersionInfo {
 func GetInstalledVersion() (*VersionInfo, error) {
 	goPath, err := exec.LookPath("go")
 	if err != nil {
-		return nil, GoNotInstalledError
+		return nil, ErrGoNotInstalled
 	}
 
 	goRoot := filepath.Join(goPath, "../../")
@@ -121,6 +124,19 @@ func Install(ver *VersionInfo, path string) error {
 		return err
 	}
 
+	fmt.Println("[+] Removing current version")
+	err = os.RemoveAll(path)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("[+] Installing %s to %s\n", ver.Version, filepath.Dir(path))
+	err = untar(filepath.Dir(path), downloadPath)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("[+] Cleaning up...")
 	err = os.Remove(downloadPath)
 	return err
 }
@@ -146,7 +162,72 @@ func downloadFile(filepath string, url string) error {
 	return err
 }
 
-func removeOldInstall(path string) error {
+func untar(dest string, file string) error {
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
-	return nil
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+
+	for {
+		header, err := tr.Next()
+
+		switch {
+
+		// if no more files are found return
+		case err == io.EOF:
+			return nil
+
+		// return any other error
+		case err != nil:
+			return err
+
+		// if the header is nil, just skip it (not sure how this happens)
+		case header == nil:
+			continue
+		}
+
+		// the target location where the dir/file should be created
+		target := filepath.Join(dest, header.Name)
+
+		// the following switch could also be done using fi.Mode(), not sure if there
+		// a benefit of using one vs. the other.
+		// fi := header.FileInfo()
+
+		// check the file type
+		switch header.Typeflag {
+
+		// if its a dir and it doesn't exist create it
+		case tar.TypeDir:
+			if _, err := os.Stat(target); err != nil {
+				if err := os.MkdirAll(target, 0755); err != nil {
+					return err
+				}
+			}
+
+		// if it's a file create it
+		case tar.TypeReg:
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+
+			// copy over contents
+			if _, err := io.Copy(f, tr); err != nil {
+				return err
+			}
+
+			// manually close here after each file operation; defering would cause each file close
+			// to wait until all operations have completed.
+			f.Close()
+		}
+	}
 }
