@@ -8,7 +8,7 @@ If you have golang installed, simply run
 go install github.com/NoF0rte/go-updater@latest
 ```
 
-If you don't have golang installed, find and download the latest [release](https://github.com/NoF0rte/go-updater/releases)
+If you don't have golang installed, find and download the latest [release](https://github.com/NoF0rte/go-updater/releases/latest)
 
 ## Usage
-Once installed, simply run `go-updater` to updated your version of golang
+Once installed, simply run `go-updater` to update your version of golang
