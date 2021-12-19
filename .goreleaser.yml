@@ -13,10 +13,8 @@ builds:
       - amd64
       - "386"
 archives:
-  - replacements:
-      linux: Linux
-      386: i386
-      amd64: x86_64
+  - files:
+    - none*
 checksum:
   name_template: 'checksums.txt'
 snapshot:
