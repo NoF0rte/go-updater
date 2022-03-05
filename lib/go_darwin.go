@@ -5,7 +5,8 @@ package lib
 import (
 	"fmt"
 	"os"
-	"os/exec"
+
+	builder "github.com/NoF0rte/cmd-builder"
 )
 
 func install(ver *VersionInfo, goArchivePath string, installPath string) error {
@@ -18,8 +19,7 @@ func install(ver *VersionInfo, goArchivePath string, installPath string) error {
 	}
 
 	fmt.Printf("[+] Installing %s\n", ver.Version)
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("open -W %s", goArchivePath))
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	return cmd.Run()
+	return builder.Shell(fmt.Sprintf("open -W %s", goArchivePath)).
+		Stdout(os.Stdout).
+		Run()
 }

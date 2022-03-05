@@ -5,13 +5,12 @@ package lib
 import (
 	"fmt"
 	"os"
-	"os/exec"
+
+	builder "github.com/NoF0rte/cmd-builder"
 )
 
 func sudoExec(args string) error {
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("sudo %s", args))
-	cmd.Stdin = os.Stdin
-	cmd.Stderr = os.Stderr
-
-	return cmd.Run()
+	return builder.Shell(fmt.Sprintf("sudo %s", args)).
+		Stdin(os.Stdin).
+		Run()
 }
