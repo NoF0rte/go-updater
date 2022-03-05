@@ -1,6 +1,6 @@
 # Go-updater
 
-Tool that simply installs the latest go version or updates your current go install to the latest. Currently only supports updating golang on linux.
+Tool that simply installs the latest go version or updates your current go install to the latest. Currently supports updating golang on linux, darwin, and windows.
 
 ## Install
 If you have golang installed, simply run

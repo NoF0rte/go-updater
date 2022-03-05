@@ -18,14 +18,14 @@ import (
 )
 
 const (
-	baseUrl            = "https://go.dev/dl/"
-	defaultInstallPath = "/usr/local/go"
+	baseUrl = "https://go.dev/dl/"
 )
 
 var (
 	versionRegex       = `[0-9]+\.[0-9]+\.[0-9]+`
 	goVersionFileRegex = regexp.MustCompile(fmt.Sprintf(`go(%s)\.([a-zA-Z]+)-([a-zA-Z0-9]+).*`, versionRegex))
 	ErrGoNotInstalled  = fmt.Errorf("go not installed")
+	defaultInstallPath = ""
 )
 
 type VersionInfo struct {
@@ -121,16 +121,7 @@ func Install(ver *VersionInfo, path string) error {
 		return err
 	}
 
-	if _, err = os.Stat(path); !os.IsNotExist(err) {
-		fmt.Println("[+] Removing current version")
-		err = sudoExec(fmt.Sprintf("rm -r %s", path))
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Printf("[+] Installing %s to %s\n", ver.Version, filepath.Dir(path))
-	err = sudoExec(fmt.Sprintf(`tar -C "%s" -xvf %s`, filepath.Dir(path), downloadPath))
+	err = install(ver, downloadPath, path)
 	if err != nil {
 		return err
 	}
@@ -159,4 +150,11 @@ func downloadFile(filepath string, url string) error {
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+func init() {
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		defaultInstallPath = "/usr/local/go"
+	}
 }
