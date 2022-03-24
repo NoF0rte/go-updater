@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	versionRegex       = `[0-9]+\.[0-9]+\.[0-9]+`
+	versionRegex       = `[0-9]+\.[0-9]+(?:\.[0-9]+)?`
 	goVersionFileRegex = regexp.MustCompile(fmt.Sprintf(`go(%s)\.([a-zA-Z]+)-([a-zA-Z0-9]+).*`, versionRegex))
 	ErrGoNotInstalled  = fmt.Errorf("go not installed")
 	defaultInstallPath = ""
