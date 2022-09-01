@@ -67,8 +67,15 @@ func GetVersions() ([]*VersionInfo, error) {
 	}
 
 	for _, ver := range allVersions {
+		if !ver.Stable {
+			continue
+		}
+
 		versionStr := strings.Replace(ver.Version, "go", "", -1)
-		v, _ := version.NewSemver(versionStr)
+		v, err := version.NewSemver(versionStr)
+		if err != nil {
+			return nil, err
+		}
 
 		arch := runtime.GOARCH
 		if arch == "arm" {
