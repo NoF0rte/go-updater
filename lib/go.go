@@ -50,7 +50,7 @@ type VersionFile struct {
 func GetVersions() ([]*VersionInfo, error) {
 	var versions []*VersionInfo
 
-	resp, err := http.Get(fmt.Sprintf("%s/?mode=json", baseUrl))
+	resp, err := http.Get(fmt.Sprintf("%s/?mode=json&include=all", baseUrl))
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +70,14 @@ func GetVersions() ([]*VersionInfo, error) {
 		versionStr := strings.Replace(ver.Version, "go", "", -1)
 		v, _ := version.NewSemver(versionStr)
 
+		arch := runtime.GOARCH
+		if arch == "arm" {
+			arch = "armv6l"
+		}
+
 		file := ""
 		for _, f := range ver.Files {
-			if f.OS != runtime.GOOS || f.Arch != runtime.GOARCH {
+			if f.OS != runtime.GOOS || f.Arch != arch {
 				continue
 			}
 
