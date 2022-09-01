@@ -2,12 +2,18 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/NoF0rte/go-updater/lib"
 )
 
 func main() {
-	latest := lib.GetLatestVersion()
+	latest, err := lib.GetLatestVersion()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	if latest == nil {
 		fmt.Println("[!] No versions for your OS and Architecture")
 		return

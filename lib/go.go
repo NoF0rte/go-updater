@@ -1,10 +1,10 @@
 package lib
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,17 +13,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gocolly/colly/v2"
 	"github.com/hashicorp/go-version"
 )
 
 const (
-	baseUrl = "https://go.dev/dl/"
+	baseUrl = "https://go.dev/dl"
 )
 
 var (
 	versionRegex       = `[0-9]+\.[0-9]+(?:\.[0-9]+)?`
-	goVersionFileRegex = regexp.MustCompile(fmt.Sprintf(`go(%s)\.([a-zA-Z]+)-([a-zA-Z0-9]+).*`, versionRegex))
 	ErrGoNotInstalled  = fmt.Errorf("go not installed")
 	defaultInstallPath = ""
 )
@@ -33,53 +31,81 @@ type VersionInfo struct {
 	Version *version.Version
 }
 
-func GetVersions() []*VersionInfo {
+type VersionResponse struct {
+	Version string        `json:"version"`
+	Stable  bool          `json:"stable"`
+	Files   []VersionFile `json:"files"`
+}
+
+type VersionFile struct {
+	Filename string `json:"filename"`
+	OS       string `json:"os"`
+	Arch     string `json:"arch"`
+	Version  string `json:"version"`
+	SHA256   string `json:"sha256"`
+	Size     int    `json:"size"`
+	Kind     string `json:"kind"`
+}
+
+func GetVersions() ([]*VersionInfo, error) {
 	var versions []*VersionInfo
 
-	base, _ := url.Parse(baseUrl)
-	c := colly.NewCollector()
-	c.OnHTML("a.download", func(h *colly.HTMLElement) {
-		name := h.Text
-		if strings.Contains(name, "src") {
-			return
+	resp, err := http.Get(fmt.Sprintf("%s/?mode=json", baseUrl))
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var allVersions []VersionResponse
+	err = json.Unmarshal(body, &allVersions)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ver := range allVersions {
+		versionStr := strings.Replace(ver.Version, "go", "", -1)
+		v, _ := version.NewSemver(versionStr)
+
+		file := ""
+		for _, f := range ver.Files {
+			if f.OS != runtime.GOOS || f.Arch != runtime.GOARCH {
+				continue
+			}
+
+			file = f.Filename
+			break
 		}
 
-		href := h.Attr("href")
-		fullPath, _ := url.Parse(fmt.Sprintf("%s://%s%s", base.Scheme, base.Host, href))
-
-		matches := goVersionFileRegex.FindStringSubmatch(name)
-		if len(matches) == 0 {
-			return
+		if file == "" {
+			continue
 		}
 
-		versionOS := matches[2]
-		architecture := matches[3]
-		if versionOS != runtime.GOOS || architecture != runtime.GOARCH {
-			return
-		}
-
-		v, _ := version.NewSemver(matches[1])
 		versions = append(versions, &VersionInfo{
-			Path:    fullPath.String(),
 			Version: v,
+			Path:    fmt.Sprintf("%s/%s", baseUrl, file),
 		})
-	})
-
-	c.Visit(baseUrl)
+	}
 
 	sort.Slice(versions, func(i, j int) bool {
 		return versions[i].Version.GreaterThanOrEqual(versions[j].Version)
 	})
 
-	return versions
+	return versions, nil
 }
 
-func GetLatestVersion() *VersionInfo {
-	versions := GetVersions()
-	if len(versions) > 0 {
-		return versions[0]
+func GetLatestVersion() (*VersionInfo, error) {
+	versions, err := GetVersions()
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	if len(versions) > 0 {
+		return versions[0], nil
+	}
+	return nil, nil
 }
 
 func GetInstalledVersion() (*VersionInfo, error) {
