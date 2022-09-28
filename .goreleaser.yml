@@ -15,6 +15,11 @@ builds:
       - amd64
       - "386"
       - arm64
+      - arm
+    goarm:
+      - 6
+      - 7
+
 archives:
   - files:
       - none*
