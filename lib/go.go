@@ -82,9 +82,14 @@ func GetVersions() ([]*VersionInfo, error) {
 			arch = "armv6l"
 		}
 
+		kind := "archive"
+		if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+			kind = "installer"
+		}
+
 		file := ""
 		for _, f := range ver.Files {
-			if f.OS != runtime.GOOS || f.Arch != arch {
+			if f.OS != runtime.GOOS || f.Arch != arch || f.Kind != kind {
 				continue
 			}
 
