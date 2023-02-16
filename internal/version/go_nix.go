@@ -1,6 +1,6 @@
 //go:build !windows
 
-package lib
+package version
 
 import (
 	"fmt"

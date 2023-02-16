@@ -1,12 +1,11 @@
-//go:build darwin
+//go:build linux
 
-package lib
+package version
 
 import (
 	"fmt"
 	"os"
-
-	builder "github.com/NoF0rte/cmd-builder"
+	"path/filepath"
 )
 
 func install(ver *VersionInfo, goArchivePath string, installPath string) error {
@@ -18,8 +17,6 @@ func install(ver *VersionInfo, goArchivePath string, installPath string) error {
 		}
 	}
 
-	fmt.Printf("[+] Installing %s\n", ver.Version)
-	return builder.Shell(fmt.Sprintf("open -W %s", goArchivePath)).
-		Stdout(os.Stdout).
-		Run()
+	fmt.Printf("[+] Installing %s to %s\n", ver.Version, filepath.Dir(installPath))
+	return sudoExec(fmt.Sprintf(`tar -C "%s" -xvf %s`, filepath.Dir(installPath), goArchivePath))
 }
