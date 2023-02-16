@@ -125,6 +125,28 @@ func GetLatestVersion() (*VersionInfo, error) {
 	return nil, nil
 }
 
+func GetSpecificVersion(v string) (*VersionInfo, error) {
+	v = strings.TrimPrefix(v, "v")
+
+	specificVersion, err := version.NewSemver(v)
+	if err != nil {
+		return nil, err
+	}
+
+	versions, err := GetVersions()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ver := range versions {
+		if ver.Version.Equal(specificVersion) {
+			return ver, nil
+		}
+	}
+
+	return nil, nil
+}
+
 func GetInstalledVersion() (*VersionInfo, error) {
 	goPath, err := exec.LookPath("go")
 	if err != nil {

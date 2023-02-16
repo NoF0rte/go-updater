@@ -1,44 +1,89 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
-	"github.com/NoF0rte/go-updater/lib"
+	"github.com/NoF0rte/go-updater/internal/version"
 )
 
+var versionOverride string
+var dryRun bool
+
 func main() {
-	latest, err := lib.GetLatestVersion()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	flag.Parse()
+
+	var err error
+	var versionToInstall *version.VersionInfo
+
+	installLatest := versionOverride == "latest"
+	if installLatest {
+		versionToInstall, err = version.GetLatestVersion()
+	} else {
+		versionToInstall, err = version.GetSpecificVersion(versionOverride)
 	}
 
-	if latest == nil {
+	checkErr(err)
+
+	if versionToInstall == nil {
 		fmt.Println("[!] No versions for your OS and Architecture")
 		return
 	}
 
-	current, err := lib.GetInstalledVersion()
-	if err != nil && err != lib.ErrGoNotInstalled {
+	current, err := version.GetInstalledVersion()
+	if err != nil && err != version.ErrGoNotInstalled {
 		fmt.Printf("[!] %v", err)
 		return
 	}
 
-	if err == lib.ErrGoNotInstalled {
+	if err == version.ErrGoNotInstalled {
 		fmt.Println("[+] Go not installed")
-		current = &lib.VersionInfo{
+		current = &version.VersionInfo{
 			Path: "",
 		}
-	} else if current.Version.LessThan(latest.Version) {
-		fmt.Printf("[+] Upgrading %s to %s\n", current.Version, latest.Version)
+	} else if installLatest {
+		if !current.Version.LessThan(versionToInstall.Version) {
+			fmt.Println("[+] Go is up to date.")
+			return
+		}
+
+		logUpgrade(current, versionToInstall)
 	} else {
-		fmt.Println("[+] Go is up to date.")
-		return
+		if current.Version.Equal(versionToInstall.Version) {
+			fmt.Println("[+] Go is up to date.")
+			return
+		}
+
+		if !current.Version.LessThan(versionToInstall.Version) {
+			logDowngrade(current, versionToInstall)
+		} else {
+			logUpgrade(current, versionToInstall)
+		}
 	}
 
-	err = lib.Install(latest, current.Path)
-	if err != nil {
-		fmt.Printf("[!] %v\n", err)
+	if !dryRun {
+		err = version.Install(versionToInstall, current.Path)
+		checkErr(err)
 	}
+}
+
+func logUpgrade(currentVer *version.VersionInfo, newVer *version.VersionInfo) {
+	fmt.Printf("[+] Upgrading %s to %s\n", currentVer.Version, newVer.Version)
+}
+
+func logDowngrade(currentVer *version.VersionInfo, newVer *version.VersionInfo) {
+	fmt.Printf("[+] Downgrading from %s to %s\n", currentVer.Version, newVer.Version)
+}
+
+func checkErr(msg interface{}) {
+	if msg != nil {
+		fmt.Printf("[!] %v\n", msg)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	flag.StringVar(&versionOverride, "version", "latest", "The version to install.")
+	flag.BoolVar(&dryRun, "dry-run", false, "Don't install anything, just log messages.")
 }
