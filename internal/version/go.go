@@ -2,6 +2,7 @@ package version
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -157,6 +158,9 @@ func GetInstalledVersion() (*VersionInfo, error) {
 
 	bytes, err := os.ReadFile(filepath.Join(goRoot, "VERSION"))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, errors.New("go VERSION file not found. This could mean go is installed via a package manager. Use the package manager to uninstall go before continuing")
+		}
 		return nil, fmt.Errorf("error reading go version file: %v", err)
 	}
 
